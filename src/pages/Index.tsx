@@ -1,32 +1,30 @@
-import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { authService } from '@/services/authService';
+import { ROUTES } from '@/config/constants';
 
 const Index = () => {
   const [shouldRedirect, setShouldRedirect] = useState(false);
+  const [redirectTo, setRedirectTo] = useState<string>('');
 
   useEffect(() => {
-    // Check if user is authenticated
-    const token = localStorage.getItem("token");
-    if (token) {
-      // If authenticated, redirect to dashboard
+    const checkAuth = () => {
+      const isAuthenticated = authService.isAuthenticated();
+      setRedirectTo(isAuthenticated ? ROUTES.DASHBOARD : ROUTES.AUTH);
       setShouldRedirect(true);
-    } else {
-      // If not authenticated, redirect to auth
-      setShouldRedirect(true);
-    }
+    };
+
+    checkAuth();
   }, []);
 
   if (shouldRedirect) {
-    const token = localStorage.getItem("token");
-    return <Navigate to={token ? "/dashboard" : "/auth"} replace />;
+    return <Navigate to={redirectTo} replace />;
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-        <p>Loading...</p>
-      </div>
+      <LoadingSpinner text="Loading..." />
     </div>
   );
 };

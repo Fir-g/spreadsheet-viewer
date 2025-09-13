@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { handleAuthError } from '../utils/api';
+import { extractedDataService } from '@/services';
 
 interface ExtractedDataItem {
   key: string;
@@ -49,57 +49,7 @@ export const useExtractedDataStore = create<ExtractedDataStore>((set, get) => ({
     }));
 
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
-
-      const getBackendUrl = (): string => {
-        const envUrl = import.meta.env.VITE_BACKEND_URL;
-        if (envUrl) {
-          if (window.location.protocol === 'https:' && envUrl.startsWith('http:')) {
-            return envUrl.replace('http:', 'https:');
-          }
-          return envUrl;
-        }
-        return window.location.protocol === 'https:' 
-          ? 'https://52.66.225.78:8000'
-          : 'http://52.66.225.78:8000';
-      };
-
-      const baseUrl = getBackendUrl();
-      const response = await fetch(
-        `${baseUrl}/metadata/specification?project_id=${projectId}`,
-        {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        // Try to get error details from response
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch {
-          errorData = { detail: `HTTP error! status: ${response.status}` };
-        }
-
-        // Handle authentication errors
-        if (handleAuthError(errorData, response)) {
-          throw new Error("Authentication failed. Please log in again.");
-        } else if (response.status === 404) {
-          throw new Error("Project not found or no data available yet.");
-        } else {
-          throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-        }
-      }
-
-      const responseData = await response.json();
-      const specifications = responseData.specifications || [];
+      const specifications = await extractedDataService.getSpecifications(projectId);
 
       set(state => ({
         data: { ...state.data, [projectId]: specifications },
@@ -109,14 +59,6 @@ export const useExtractedDataStore = create<ExtractedDataStore>((set, get) => ({
       }));
 
     } catch (err) {
-      // Handle authentication errors in catch block too
-      if (handleAuthError(err)) {
-        set(state => ({
-          loading: { ...state.loading, [projectId]: false },
-          error: { ...state.error, [projectId]: "Authentication failed. Please log in again." }
-        }));
-        return;
-      }
       const errorMessage = err instanceof Error ? err.message : "Failed to fetch data";
       set(state => ({
         loading: { ...state.loading, [projectId]: false },
