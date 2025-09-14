@@ -1,11 +1,13 @@
 import { useFiles } from '@/hooks/useFiles';
 import { useLocation, useParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useFilters } from '@/hooks/useFilters';
 import { Card, CardContent } from "@/components/ui/card";
 import EnhancedFileUpload from "./FileUploadComponent";
 import { FilesHeader, FilesFilters, FilesList } from "./files";
+import { SplitManagerModal } from './split-manager';
+import { useSplitManager } from '@/hooks/useSplitManager';
 import type { FileData } from "@/types";
 
 export function FilesView() {
@@ -14,7 +16,10 @@ export function FilesView() {
   const projectUuid = params.projectId || location.state?.projectId;
 
   const { files, isLoading, deleteFile, refreshFiles } = useFiles(projectUuid);
+  const { xlsxFiles, fetchXlsxFiles } = useSplitManager();
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [splitManagerOpen, setSplitManagerOpen] = useState(false);
+  const [pendingXlsxFiles, setPendingXlsxFiles] = useState<{ id: string; name: string }[]>([]);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; file: FileData | null }>({ 
     open: false, 
     file: null 
@@ -38,6 +43,13 @@ export function FilesView() {
     clearFilters,
   } = useFilters(files);
 
+  const handleOpenSplitManager = async () => {
+    if (projectUuid) {
+      await fetchXlsxFiles(projectUuid);
+      setSplitManagerOpen(true);
+    }
+  };
+
   const handleDeleteFile = async () => {
     if (!deleteDialog.file || !projectUuid) return;
 
@@ -58,11 +70,32 @@ export function FilesView() {
     }
   };
 
+  const handleXlsxFilesUploaded = (xlsxFiles: { id: string; name: string }[]) => {
+    setPendingXlsxFiles(xlsxFiles);
+    // Auto-open split manager after upload
+    setTimeout(() => {
+      // Set the files in the split manager before opening
+      fetchXlsxFiles(projectUuid!).then(() => {
+        setSplitManagerOpen(true);
+      });
+    }, 1000); // Small delay to allow UI to update
+  };
+
+  // Auto-populate XLSX files for split manager when opened
+  useEffect(() => {
+    if (splitManagerOpen && pendingXlsxFiles.length > 0) {
+      // Use pending XLSX files instead of fetching
+      setPendingXlsxFiles([]);
+    }
+  }, [splitManagerOpen, pendingXlsxFiles]);
   return (
     <div className="h-screen flex flex-col p-6 space-y-6 max-w-7xl mx-auto overflow-hidden">
       <Card className="border-0 bg-white/60 backdrop-blur shadow-sm flex-shrink-0">
         <CardContent className="p-4">
-          <FilesHeader onUploadClick={() => setUploadDialogOpen(true)} />
+          <FilesHeader 
+            onUploadClick={() => setUploadDialogOpen(true)}
+            onSplitManagerClick={handleOpenSplitManager}
+          />
 
           <FilesFilters
             searchTerm={searchTerm}
@@ -106,6 +139,17 @@ export function FilesView() {
         onOpenChange={setUploadDialogOpen}
         projectUuid={projectUuid}
         onUploadSuccess={handleUploadSuccess}
+        onXlsxFilesUploaded={handleXlsxFilesUploaded}
+      />
+
+      <SplitManagerModal
+        open={splitManagerOpen}
+        onOpenChange={setSplitManagerOpen}
+        projectId={projectUuid || ''}
+        xlsxFiles={pendingXlsxFiles.length > 0 ? 
+          pendingXlsxFiles.map(f => ({ id: f.id, name: f.name, type: 'xlsx' } as FileData)) : 
+          xlsxFiles
+        }
       />
     </div>
   );

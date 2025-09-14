@@ -1,11 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
+import { Upload, Split } from "lucide-react";
 
 interface FilesHeaderProps {
   onUploadClick: () => void;
+  onSplitManagerClick: () => void;
 }
 
-export const FilesHeader = ({ onUploadClick }: FilesHeaderProps) => {
+export const FilesHeader = ({ onUploadClick, onSplitManagerClick }: FilesHeaderProps) => {
   return (
     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
       <div>
@@ -15,13 +16,24 @@ export const FilesHeader = ({ onUploadClick }: FilesHeaderProps) => {
         </p>
       </div>
 
-      <Button 
-        onClick={onUploadClick}
-        className="bg-black hover:bg-black text-white"
-      >
-        <Upload className="h-4 w-4 mr-2" />
-        Upload Files
-      </Button>
+      <div className="flex gap-2">
+        <Button 
+          onClick={onSplitManagerClick}
+          variant="outline"
+          className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+        >
+          <Split className="h-4 w-4 mr-2" />
+          Split Manager
+        </Button>
+
+        <Button 
+          onClick={onUploadClick}
+          className="bg-black hover:bg-black text-white"
+        >
+          <Upload className="h-4 w-4 mr-2" />
+          Upload Files
+        </Button>
+      </div>
     </div>
   );
 };

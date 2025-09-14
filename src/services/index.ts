@@ -6,6 +6,7 @@ export { fileService } from './fileService';
 export { chatService } from './chatService';
 export { extractedDataService } from './extractedDataService';
 export { metadataService } from './metadataService';
+export { splitService } from './splitService';
 
 // Re-export types for convenience
 export type { ApiResponse, RequestConfig } from './base/ApiClient';

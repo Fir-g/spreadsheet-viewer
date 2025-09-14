@@ -4,6 +4,7 @@ import { toast } from "@/components/ui/use-toast";
 import { fileService } from '@/services';
 import * as XLSX from 'xlsx';
 import { UploadHeader, DropZone, FileConfigForm, UploadProgress } from "./upload";
+import type { FileData } from '@/types';
 
 interface FileMetadata {
   type: string;
@@ -25,13 +26,15 @@ interface FileUploadComponentProps {
   onOpenChange: (open: boolean) => void;
   projectUuid?: string;
   onUploadSuccess?: () => void;
+  onXlsxFilesUploaded?: (xlsxFiles: { id: string; name: string }[]) => void;
 }
 
 export default function EnhancedFileUpload({ 
   open, 
   onOpenChange, 
   projectUuid, 
-  onUploadSuccess 
+  onUploadSuccess,
+  onXlsxFilesUploaded
 }: FileUploadComponentProps) {
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -361,20 +364,34 @@ export default function EnhancedFileUpload({
     setUploading(true);
     setUploadError(null);
 
+    const uploadedXlsxFiles: { id: string; name: string }[] = [];
     try {
       // Upload files individually
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
         const metadata = fileMetadata[i];
         
-        await fileService.uploadFile({
+        const uploadedFile = await fileService.uploadFile({
           file,
           document_type: metadata.type.toLowerCase(),
           project_id: projectUuid,
           description: metadata.description?.trim(),
         });
+
+        // Track XLSX files for split manager
+        const fileType = getFileTypeFromExtension(file.name);
+        if (fileType === "xlsx") {
+          uploadedXlsxFiles.push({
+            id: uploadedFile.file_id || uploadedFile.id,
+            name: uploadedFile.filename || uploadedFile.name
+          });
+        }
       }
 
+      // Auto-open split manager if XLSX files were uploaded
+      if (uploadedXlsxFiles.length > 0 && onXlsxFilesUploaded) {
+        onXlsxFilesUploaded(uploadedXlsxFiles);
+      }
       onOpenChange(false);
       resetForm();
 

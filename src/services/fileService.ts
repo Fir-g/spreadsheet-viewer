@@ -42,7 +42,20 @@ class FileService {
       formData.append('description', data.description.trim());
     }
 
-    return apiClient.upload<FileData>('/ingest/upload', formData);
+    const response = await apiClient.upload<any>('/ingest/upload', formData);
+    
+    // Map response fields to FileData interface
+    return {
+      id: response.file_id || response.id,
+      name: response.filename || response.name,
+      type: data.file.name.split('.').pop()?.toLowerCase() || '',
+      document_type: data.document_type,
+      file_size: response.file_size || String(data.file.size),
+      uploaded_at: response.uploaded_at,
+      modified_at: response.modified_at || response.uploaded_at,
+      status: response.status,
+      description: data.description,
+    } as FileData;
   }
 
   async uploadMultipleFiles(
